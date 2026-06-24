@@ -1,15 +1,9 @@
 const express = require("express");
-const idempotencyMiddleware = require("./middleware/idempotency.middleware");
-const paymentController = require("./controllers/payment.controller");
-
+const paymentRouter = require("./routes/payment.routes");
 const app = express();
 app.use(express.json());
 
-app.post(
-  "/process-payment",
-  idempotencyMiddleware,
-  paymentController.processPayment,
-);
+app.use("/api/v1", paymentRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
