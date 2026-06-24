@@ -1,6 +1,6 @@
 const { createClient } = require("redis");
 
-// Fallback to local Redis if no environment variable is provided (env implementation later)
+// Fallback to local Redis if no environment variable is provided (env implementation later in prod.)
 const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 const redisClient = createClient({

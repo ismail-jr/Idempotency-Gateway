@@ -122,56 +122,62 @@ Returned when same key is used with different payload.
 
 # 4. Design Decisions
 
-# 4.1 Redis Locking
+## 4.1 Redis Locking
 
 Uses SET key value NX EX
 Prevents duplicate execution during concurrent requests
 Ensures only one payment runs per key
 
-# 4.2 Request Fingerprinting
+## 4.2 Request Fingerprinting
 
 SHA-256 hash of request body
 Stored under meta:<idempotency-key>
 Detects payload tampering or reuse conflicts
 
-# 4.3 Response Caching
+## 4.3 Response Caching
 
 Final response stored under:
 response:<key>
 TTL-based expiry (default 24h)
 Enables instant replay of duplicate requests
 
-# 4.4 In-Flight Protection
+## 4.4 In-Flight Protection
 
 Polling loop checks:
 lock status
 cached response
 Prevents race condition double processing
 
-# 4.5 Failure Safety
+## 4.5 Failure Safety
 
 Locks expire automatically (TTL fallback)
 Prevents deadlocks if process crashes
 
-## 5. Validation Results
+# 5. Validation Results
 
 **Concurrent Request Test**
 
 ```bash
-Request A
-Duration: ~2000ms
+Request A - Initial
+Dispatched: 2026-06-24T18:25:44.808Z
+Finished: 2026-06-24T18:25:46.840Z
+Duration: 2032ms
 Cache Hit: false
 
-Request B (arrives during A execution)
-Duration: ~1900ms
+Request B - Concurrent Duplicate
+Dispatched: 2026-06-24T18:25:44.919Z
+Finished: 2026-06-24T18:25:47.042Z
+Duration: 2123ms
 Cache Hit: true
 
-Request C (after cache stored)
-Duration: ~5–15ms
+Request C - Subsequent Retry
+Dispatched: 2026-06-24T18:25:50.051Z
+Finished: 2026-06-24T18:25:50.058Z
+Duration: 7ms
 Cache Hit: true
 ```
 
-## 6. Developer Choice: Security Enhancement
+# 6. Developer Choice: Security Enhancement
 
 **Request Body Integrity Guard**
 
@@ -185,9 +191,9 @@ Protects ledger consistency in payment systems
 
 **Behavior:**
 
-##7. Summary
+# 7. Summary
 
-**This system guarantees:\*\***
+**This system guarantees:**
 
 Exactly-once payment execution
 Safe retries under network failure

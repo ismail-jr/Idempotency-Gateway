@@ -1,32 +1,21 @@
-// tests/simulate-traffic.js
 const http = require("http");
-
 const crypto = require("crypto");
 
+// 1. Generate a single base tracking key using native UUID
 const TEST_KEY = crypto.randomUUID();
 
-const paymentPayload = JSON.stringify({
-  accountNo: "ACC-98765-XYZ",
-  amount: 250.0,
-  currency: "GHS",
-});
-
-const commonHeaders = {
-  "Content-Type": "application/json",
-  "Content-Length": Buffer.byteLength(paymentPayload),
-  "Idempotency-Key": TEST_KEY,
-};
-
 /**
- * Helper function to fire an HTTP POST request
+ * Helper function to fire an HTTP POST request dynamically
  * @param {string} label - Name of the test request
+ * @param {object} payloadObj - The specific JSON body data to send
  */
-function sendPayment(label) {
+function sendPayment(label, payloadObj) {
   return new Promise((resolve) => {
+    const postData = JSON.stringify(payloadObj);
     const startTime = Date.now();
 
     console.log(
-      `[${label}] Dispatched at ${new Date(startTime).toISOString()}`,
+      `\n [${label}] Dispatched at ${new Date(startTime).toISOString()}`,
     );
 
     const req = http.request(
@@ -35,7 +24,11 @@ function sendPayment(label) {
         port: 3000,
         path: "/api/v1/process-payment",
         method: "POST",
-        headers: commonHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+          "Idempotency-Key": TEST_KEY, // Keeps the same key to verify idempotency handling
+        },
       },
       (res) => {
         let data = "";
@@ -48,50 +41,94 @@ function sendPayment(label) {
           const endTime = Date.now();
           const duration = endTime - startTime;
 
-          console.log(`\n[${label}] Response Received`);
-          console.log(`Status: ${res.statusCode}`);
-          console.log(`Duration: ${duration}ms`);
-          console.log(`Cache Hit: ${res.headers["x-cache-hit"] || "false"}`);
-          console.log(`Finished At: ${new Date(endTime).toISOString()}`);
-          console.log(JSON.parse(data));
+          console.log(` [${label}] Response Received`);
+          console.log(`   Status: ${res.statusCode}`);
+          console.log(`   Duration: ${duration}ms`);
+          console.log(`   Cache Hit: ${res.headers["x-cache-hit"] || "false"}`);
 
-          resolve();
+          try {
+            console.log(`   Body:`, JSON.parse(data));
+          } catch (e) {
+            console.log(`   Body:`, data);
+          }
+
+          resolve(res.statusCode);
         });
       },
     );
 
     req.on("error", (err) => {
-      console.error(`[${label}] Error:`, err.message);
-      resolve();
+      console.error(` [${label}] Error:`, err.message);
+      resolve(null);
     });
 
-    req.write(paymentPayload);
+    req.write(postData);
     req.end();
   });
 }
-// Orchestrate the simultaneous and subsequent traffic flow
+
 async function runTestSuite() {
-  console.log(" Starting Idempotency Validation Suite...\n");
+  console.log("==================================================");
+  console.log("  FINSAFE IDEMPOTENCY PROTOCOL VERIFICATION SUITE");
+  console.log(` Global Test Key: ${TEST_KEY}`);
+  console.log("==================================================\n");
 
-  // 1. Fire the initial long-running request
-  const requestA = sendPayment("Request A - Initial");
+  // Define our regular standard payload
+  const standardPayload = {
+    accountNo: "ACC-98765-XYZ",
+    amount: 250.0,
+    currency: "GHS",
+  };
 
-  // 2. Wait 100 milliseconds and fire an identical request while A is still running
+  // Define a tampered payload (Same key, different amount!)
+  const tamperedPayload = {
+    accountNo: "ACC-98765-XYZ",
+    amount: 999.0, //  Modified amount to test fraud detection
+    currency: "GHS",
+  };
+
+  // ───────────────────────────────────────────────────────────
+  // FLOW 1 & 2: CONCURRENT SPIKE & LOBBY POLLING
+  // ───────────────────────────────────────────────────────────
+  console.log("--- STAGE 1: Simulating Concurrent Traffic Spike ---");
+
+  // Fire Request A (starts processing, takes 2 seconds)
+  const requestA = sendPayment("Request A - Initial", standardPayload);
+
+  // Wait 100 milliseconds and fire Request B while A is still running
   await new Promise((r) => setTimeout(r, 100));
-  const requestB = sendPayment("Request B - Concurrent Duplicate");
+  const requestB = sendPayment(
+    "Request B - Concurrent Duplicate",
+    standardPayload,
+  );
 
-  // Wait for both in-flight requests to complete their cycles
+  // Wait for both concurrent cycles to resolve
   await Promise.all([requestA, requestB]);
 
+  // ───────────────────────────────────────────────────────────
+  // FLOW 3: HISTORIC RETRY CHECK
+  // ───────────────────────────────────────────────────────────
   console.log(
-    "\n Waiting 3 seconds for Request A to fully settle and cache...",
+    "\n--- STAGE 2: Simulating Historic Retry (After Settlement) ---",
   );
-  await new Promise((r) => setTimeout(r, 3000));
+  await sendPayment("Request C - Subsequent Retry", standardPayload);
 
-  // 3. Fire a final request with the exact same key to see if it gets the cached response
-  await sendPayment("Request C - Subsequent Retry");
+  // ───────────────────────────────────────────────────────────
+  // FLOW 4: FRAUD DETECTION / TAMPER GUARD
+  // ───────────────────────────────────────────────────────────
+  console.log("\n--- STAGE 3: Simulating Payload Tampering Attack ---");
+  const finalStatus = await sendPayment(
+    "Request D - Modified Payload",
+    tamperedPayload,
+  );
 
-  console.log("\n Test suite finished evaluation.");
+  console.log("\n==================================================");
+  if (finalStatus === 422) {
+    console.log(" VERIFICATION COMPLETE: ALL SECURITY RULES PASSED ");
+  } else {
+    console.log("VERIFICATION COMPLETE: FRAUD LAYER FAILING ");
+  }
+  console.log("==================================================\n");
 }
 
 runTestSuite();

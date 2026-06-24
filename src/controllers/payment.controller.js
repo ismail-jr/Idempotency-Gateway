@@ -6,10 +6,6 @@ class PaymentController {
       return res.status(400).json({ error: "Missing amount or currency." });
     }
 
-    console.log(
-      `[Processor] Processing transaction for ${amount} ${currency}...`,
-    );
-
     // Simulate the required 2-second processing lag
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
