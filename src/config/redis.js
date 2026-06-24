@@ -21,7 +21,7 @@ const redisClient = createClient({
 });
 
 // Event listeners for monitoring health
-redisClient.on("connect", () => console.log("🔌 Connecting to Redis..."));
+redisClient.on("connect", () => console.log(" Connecting to Redis..."));
 redisClient.on("ready", () => console.log("Redis client ready and connected!"));
 redisClient.on("error", (err) => console.error("Redis Client Error:", err));
 redisClient.on("end", () => console.log("Redis connection closed."));
