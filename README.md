@@ -38,8 +38,9 @@ sequenceDiagram
 
 Prerequisites
 
-Node.js (v16+)
-Docker Desktop (with Virtualization enabled)
+- Node.js (v16+)
+
+- Docker Desktop (with Virtualization enabled)
 
 ### 1. Clone repository
 
@@ -79,8 +80,10 @@ npm test
 Processes a payment request with idempotency protection.
 
 **Headers:**
-Content-Type: application/json
-Idempotency-Key: <UUID>
+
+- Content-Type: application/json
+
+- Idempotency-Key: <UUID>
 
 **Request Body Object**
 
