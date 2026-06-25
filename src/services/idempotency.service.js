@@ -5,7 +5,7 @@ class IdempotencyService {
    * Tries to acquire an exclusive lock for a request key.
    * Uses Redis SET with NX (Not Exists) and EX (Expiration).
    * @param {string} key
-   * @param {number} ttlInSeconds - Time-to-live for the lock (e.g., 30 seconds)
+   * @param {number} ttlInSeconds - Time-to-live for the lock
    * @returns {Promise<boolean>} True if lock acquired, false if request is already in progress
    */
   async acquireLock(key, ttlInSeconds = 30) {
@@ -37,7 +37,7 @@ class IdempotencyService {
    * Caches the final response payload and removes the temporary in-progress lock.
    * @param {string} key
    * @param {object} responseBody - The payload to cache
-   * @param {number} ttlInSeconds - How long to remember this response (e.g., 24 hours = 86400)
+   * @param {number} ttlInSeconds - How long to remember this response
    */
   async saveResponseAndReleaseLock(key, responseBody, ttlInSeconds = 86400) {
     const lockKey = `lock:${key}`;

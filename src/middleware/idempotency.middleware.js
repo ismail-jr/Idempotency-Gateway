@@ -24,7 +24,7 @@ async function idempotencyMiddleware(req, res, next) {
     const existingHash = await redisClient.get(lookupKey);
 
     if (existingHash && existingHash !== currentBodyHash) {
-      // User Story 3: Same key, different body
+      // Same key, different body
       return res.status(422).json({
         error: "Unprocessable Entity",
         message: "Idempotency key already used for a different request body.",
@@ -38,8 +38,8 @@ async function idempotencyMiddleware(req, res, next) {
 
     const uniqueTrackingKey = `${idempotencyKey}:${currentBodyHash}`;
 
-    // 2. Poll/Wait Loop Strategy (Bonus User Story)
-    const maxRetries = 15; // 15 * 200ms = 3 seconds max wait time
+    // 2. Poll/Wait Loop Strategy
+    const maxRetries = 15;
     let retries = 0;
 
     while (retries < maxRetries) {
@@ -47,7 +47,7 @@ async function idempotencyMiddleware(req, res, next) {
       const cachedResponse =
         await idempotencyService.getCachedResponse(uniqueTrackingKey);
       if (cachedResponse) {
-        res.setHeader("X-Cache-Hit", "true"); // User Story 2 Requirement
+        res.setHeader("X-Cache-Hit", "true");
         return res.status(cachedResponse.status).json(cachedResponse.body);
       }
 
@@ -61,7 +61,7 @@ async function idempotencyMiddleware(req, res, next) {
 
       // If lock failed, Request A is currently processing. Wait 200ms and check again
       retries++;
-      await new Promise((resolve) => setTimeout(resolve, 2000 / 10)); // 200ms
+      await new Promise((resolve) => setTimeout(resolve, 2000 / 10));
     }
 
     // If we exhausted retries and Request A still hasn't finished, safe fail-closed timeout

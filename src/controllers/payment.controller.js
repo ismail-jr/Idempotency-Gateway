@@ -9,7 +9,7 @@ class PaymentController {
     // Simulate the required 2-second processing lag
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Return the exact success string message required by User Story 1
+    // Return the exact success string message
     return res.status(200).json({
       status: "SUCCESS",
       message: `Charged ${amount} ${currency}`,
